@@ -16,6 +16,7 @@ export default function Home() {
   const [captchaError, setCaptchaError] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchingVoices, setFetchingVoices] = useState(true);
+  const [selectedLocale, setSelectedLocale] = useState('All');
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -72,10 +73,19 @@ export default function Home() {
     setLoading(false);
   };
 
-  const filteredVoices = voices.filter(v => 
-    v.FriendlyName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    v.Locale.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const uniqueLocales = ['All', ...new Set(voices.map(v => v.Locale))].sort();
+
+  const filteredVoices = voices.filter(v => {
+    const matchesSearch = 
+      v.FriendlyName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      v.Locale.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Show if matches locale OR is a Multilingual neural voice
+    const isMultilingual = v.FriendlyName.toLowerCase().includes('multilingual');
+    const matchesLocale = selectedLocale === 'All' || v.Locale === selectedLocale || isMultilingual;
+    
+    return matchesSearch && matchesLocale;
+  });
 
   return (
     <div className="min-h-screen container mx-auto px-4 py-8 max-w-5xl">
@@ -202,15 +212,32 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Voice Catalog</h2>
             <p className="text-slate-500 text-sm">Select a voice for your speech</p>
           </div>
-          <div className="relative mb-6">
-            <input 
-              type="text" 
-              placeholder="Search by language, country, or name..." 
-              className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-colors text-slate-800"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-            <svg className="w-5 h-5 text-slate-400 absolute left-4 top-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Country / Language</label>
+              <select 
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-medium text-slate-700"
+                value={selectedLocale}
+                onChange={e => setSelectedLocale(e.target.value)}
+              >
+                {uniqueLocales.map(loc => (
+                  <option key={loc} value={loc}>
+                    {loc === 'All' ? 'All Countries / Languages' : loc}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative">
+              <input 
+                type="text" 
+                placeholder="Search by name..." 
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-colors text-slate-800"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              <svg className="w-5 h-5 text-slate-400 absolute left-4 top-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto pr-3 space-y-4 custom-scrollbar">
