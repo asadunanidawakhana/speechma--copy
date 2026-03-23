@@ -16,7 +16,8 @@ export default function Home() {
   const [captchaError, setCaptchaError] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchingVoices, setFetchingVoices] = useState(true);
-  const [selectedLocale, setSelectedLocale] = useState('All');
+  const [selectedLanguage, setSelectedLanguage] = useState('All');
+  const [selectedCountry, setSelectedCountry] = useState('All');
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -73,18 +74,46 @@ export default function Home() {
     setLoading(false);
   };
 
-  const uniqueLocales = ['All', ...new Set(voices.map(v => v.Locale))].sort();
+  const getLanguageName = (v: any) => {
+    if (!v.FriendlyName) return v.Locale;
+    const parts = v.FriendlyName.split(' - ');
+    if (parts.length > 1) {
+      const locPart = parts[parts.length - 1].trim();
+      const lang = locPart.split(' (')[0];
+      return lang;
+    }
+    return v.Locale;
+  };
+
+  const getCountryName = (v: any) => {
+    if (!v.FriendlyName) return v.Locale;
+    const parts = v.FriendlyName.split(' - ');
+    if (parts.length > 1) {
+      const locPart = parts[parts.length - 1].trim();
+      const match = locPart.match(/\((.*)\)/);
+      let name = match ? match[1] : locPart;
+      if (name === 'United States') return 'US';
+      if (name === 'United Kingdom') return 'UK';
+      return name;
+    }
+    return v.Locale;
+  };
+
+  const languages = ['All', ...new Set(voices.map(v => getLanguageName(v)))].sort();
+  const countries = ['All', ...new Set(voices.map(v => getCountryName(v)))].sort();
 
   const filteredVoices = voices.filter(v => {
-    const matchesSearch = 
-      v.FriendlyName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      v.Locale.toLowerCase().includes(searchQuery.toLowerCase());
+    const nameStr = v.FriendlyName || '';
+    const matchesSearch = nameStr.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Show if matches locale OR is a Multilingual neural voice
-    const isMultilingual = v.FriendlyName.toLowerCase().includes('multilingual');
-    const matchesLocale = selectedLocale === 'All' || v.Locale === selectedLocale || isMultilingual;
+    const lang = getLanguageName(v);
+    const country = getCountryName(v);
+    const isMultilingual = nameStr.toLowerCase().includes('multilingual');
+
+    const matchesLanguage = selectedLanguage === 'All' || lang === selectedLanguage || isMultilingual;
+    const matchesCountry = selectedCountry === 'All' || country === selectedCountry;
     
-    return matchesSearch && matchesLocale;
+    return matchesSearch && matchesLanguage && matchesCountry;
   });
 
   return (
@@ -213,30 +242,42 @@ export default function Home() {
             <p className="text-slate-500 text-sm">Select a voice for your speech</p>
           </div>
           <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Country / Language</label>
-              <select 
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-medium text-slate-700"
-                value={selectedLocale}
-                onChange={e => setSelectedLocale(e.target.value)}
-              >
-                {uniqueLocales.map(loc => (
-                  <option key={loc} value={loc}>
-                    {loc === 'All' ? 'All Countries / Languages' : loc}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Language</label>
+                <select 
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-semibold text-slate-700"
+                  value={selectedLanguage}
+                  onChange={e => setSelectedLanguage(e.target.value)}
+                >
+                  {languages.map(l => (
+                    <option key={l} value={l}>{l === 'All' ? 'All Languages' : l}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Country</label>
+                <select 
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all cursor-pointer font-semibold text-slate-700"
+                  value={selectedCountry}
+                  onChange={e => setSelectedCountry(e.target.value)}
+                >
+                  {countries.map(c => (
+                    <option key={c} value={c}>{c === 'All' ? 'All Countries' : c}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="relative">
               <input 
                 type="text" 
-                placeholder="Search by name..." 
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-colors text-slate-800"
+                placeholder="Search..." 
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-colors text-slate-800"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
-              <svg className="w-5 h-5 text-slate-400 absolute left-4 top-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>
           </div>
           
@@ -271,39 +312,37 @@ export default function Home() {
                 <p className="text-slate-500 text-sm font-medium">No voices found matching "{searchQuery}"</p>
               </div>
             ) : (
-              filteredVoices.map(v => {
-                const isSelected = selectedVoice === v.ShortName;
-                const voiceName = v.FriendlyName.split('-')[0].replace('Microsoft', '').trim();
-                return (
+              filteredVoices.map(v => (
+                (() => {
+                  const isSelected = selectedVoice === v.ShortName;
+                  const voiceName = v.FriendlyName.split('-')[0].replace('Microsoft', '').trim();
+                  const lang = getLanguageName(v);
+                  const country = getCountryName(v);
+                  const isMultilingual = v.FriendlyName.toLowerCase().includes('multilingual');
+                  const displayName = isMultilingual && selectedLanguage !== 'All' ? `${voiceName} ${selectedLanguage}` : voiceName;
+                  return (
                   <div 
                     key={v.ShortName} 
                     className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 group ${isSelected ? 'border-blue-500 bg-blue-50/50 shadow-sm ring-1 ring-blue-500' : 'border-slate-100 hover:border-slate-300 hover:shadow-sm bg-white'}`}
                     onClick={() => setSelectedVoice(v.ShortName)}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        {isSelected && <span className="w-2 h-2 rounded-full bg-blue-500"></span>}
-                        <h4 className={`font-bold text-base truncate pr-2 ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>{voiceName}</h4>
+                      <div className="flex flex-col gap-0.5">
+                        <h4 className={`font-bold text-base truncate pr-2 ${isSelected ? 'text-blue-700' : 'text-slate-800'}`}>{displayName}</h4>
+                        <div className="flex gap-1.5 mt-1">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold uppercase">{v.Gender}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 font-bold uppercase">{selectedLanguage !== 'All' && isMultilingual ? selectedLanguage : lang}</span>
+                        </div>
                       </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-lg font-medium tracking-wide ${v.Gender === 'Female' ? 'bg-pink-100/80 text-pink-700' : 'bg-blue-100/80 text-blue-700'}`}>
-                        {v.Gender}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-500 mb-4 flex items-center gap-1.5 font-medium">
-                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                      {v.Locale}
-                    </p>
-                    
-                    <div className="flex gap-2">
                       <button 
-                        className={`text-sm font-semibold flex-1 px-4 py-2.5 rounded-xl transition-all flex justify-center items-center gap-2 ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-md shadow-blue-500/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 group-hover:bg-blue-100/50 group-hover:text-blue-600'}`}
+                        className={`p-2 rounded-full transition-all ${isSelected ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-500'}`}
                         onClick={(e) => {
                           e.stopPropagation();
+                          // Handle Listen logic
                           const btn = e.currentTarget;
-                          const originalText = btn.innerHTML;
+                          const originalInner = btn.innerHTML;
                           btn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-currentColor border-t-transparent rounded-full"></span>';
-                          
-                          const text = `Hi, I am an AI voice from ${v.Locale}.`;
+                          const text = `Hi, I am an AI voice supporting ${lang}.`;
                           fetch(`${API_BASE_URL}/api/generate`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -312,19 +351,26 @@ export default function Home() {
                             const url = URL.createObjectURL(b);
                             const a = new Audio(url);
                             a.play();
-                            a.onended = () => { btn.innerHTML = originalText; };
+                            a.onended = () => { btn.innerHTML = originalInner; };
                           }).catch(() => {
-                            btn.innerHTML = originalText;
+                            btn.innerHTML = originalInner;
                           });
                         }}
                       >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                        Listen
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                       </button>
                     </div>
+                    
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        {country}
+                      </span>
+                    </div>
                   </div>
-                );
-              })
+                  );
+                })()
+              ))
             )}
           </div>
         </aside>
