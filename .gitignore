@@ -1,0 +1,19 @@
+# Common exclusions
+node_modules/
+venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+.DS_Store
+
+# Backend specific
+backend/venv/
+backend/__pycache__/
+backend/outputs/
+
+# Frontend specific
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
